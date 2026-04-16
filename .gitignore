@@ -1,1 +1,14 @@
 myenv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.dll
+*.so
+*.dylib
+*.log
+*.sqlite3
+*.env
+.vscode/
+.idea/
+
