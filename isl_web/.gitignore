@@ -1,0 +1,45 @@
+# Virtual environments
+myenv/
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Django
+staticfiles/
+*.sqlite3
+
+# Secrets
+.env
+.env.*
+
+# Models (upload to Google Drive instead)
+*.keras
+*.h5
+*.tflite
+
+# Label maps
+*.json
+
+# Dataset & cache
+landmark_cache*/
+isl_word/
+isl_sentence/
+*.npy
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
