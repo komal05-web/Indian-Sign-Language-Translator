@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ─── Trained models ───────────────────────────────────────────
 *.keras
 *.h5
@@ -97,3 +98,19 @@ tb_logs/
 *.rar
 .env
 .env.*
+=======
+myenv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.dll
+*.so
+*.dylib
+*.log
+*.sqlite3
+*.env
+.vscode/
+.idea/
+
+>>>>>>> 04f7417675a65bd047beac1dded7796e58684764
