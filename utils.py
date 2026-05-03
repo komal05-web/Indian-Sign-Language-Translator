@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from collections import deque
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
 
 
 # ─── Constants ────────────────────────────────────────────────────────────────
@@ -22,7 +22,7 @@ VALIDATION_SPLIT = 0.20
 RANDOM_SEED      = 42
 
 # Paths (resolved relative to this file's directory)
-BASE_DIR        = "C:\\Users\\kkani\\Documents\\py files\\ISL"
+BASE_DIR        = "C:\\Users\\Komal Pandey\\Downloads\\ISL\\ISL"
 MODEL_SAVE_PATH = os.path.join(BASE_DIR, "word\\isl_best_model.keras")   # final model
 LABEL_MAP_PATH  = os.path.join(BASE_DIR, "word\\label_map.json")
 PLOTS_DIR       = os.path.join(BASE_DIR, "word\\plots")

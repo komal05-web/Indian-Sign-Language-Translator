@@ -1,0 +1,779 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HandTalk India — ISL Real-Time Translator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #0a0a0f;
+  --surface:   #111118;
+  --card:      #16161f;
+  --border:    #ffffff0f;
+  --accent:    #00e5a0;
+  --accent2:   #7c6eff;
+  --danger:    #ff4d6d;
+  --text:      #e8e8f0;
+  --muted:     #666680;
+  --font-head: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Noise grain overlay ─────────────────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  opacity: 0.4;
+}
+
+/* ── Grid lines background ───────────────────────────────────────────────── */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+}
+
+/* ── Nav ─────────────────────────────────────────────────────────────────── */
+nav {
+  position: relative; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 40px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  font-family: var(--font-head);
+  font-weight: 800; font-size: 20px; letter-spacing: -0.5px;
+  display: flex; align-items: center; gap: 10px;
+}
+.logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+.status-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 14px; border-radius: 100px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 12px; font-family: var(--font-mono); color: var(--muted);
+  transition: all .3s;
+}
+.status-pill.connected { border-color: var(--accent); color: var(--accent); }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.status-dot.pulse { animation: pulse 2s infinite; }
+@keyframes pulse {
+  0%,100% { opacity: 1; } 50% { opacity: .3; }
+}
+
+/* ── Hero section ────────────────────────────────────────────────────────── */
+.hero {
+  position: relative; z-index: 2;
+  text-align: center;
+  padding: 64px 40px 40px;
+}
+.hero-tag {
+  display: inline-block;
+  padding: 4px 12px; border-radius: 100px;
+  border: 1px solid #00e5a020;
+  background: #00e5a008;
+  color: var(--accent);
+  font-size: 11px; font-family: var(--font-mono); letter-spacing: .1em;
+  text-transform: uppercase; margin-bottom: 20px;
+}
+.hero h1 {
+  font-family: var(--font-head);
+  font-size: clamp(36px, 6vw, 72px);
+  font-weight: 800; line-height: 1.0;
+  letter-spacing: -2px;
+  background: linear-gradient(135deg, #fff 30%, #00e5a0 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 16px;
+}
+.hero p {
+  color: var(--muted); font-size: 16px; font-weight: 300;
+  max-width: 480px; margin: 0 auto 40px; line-height: 1.7;
+}
+
+/* ── Mode toggle ─────────────────────────────────────────────────────────── */
+.mode-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 32px;
+}
+.mode-btn {
+  padding: 8px 24px; border-radius: 8px;
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: .05em;
+  border: none; cursor: pointer; transition: all .2s;
+  background: transparent; color: var(--muted);
+}
+.mode-btn.active {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+/* ── Main layout ─────────────────────────────────────────────────────────── */
+.main-layout {
+  position: relative; z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 20px;
+  padding: 0 40px 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ── Camera card ─────────────────────────────────────────────────────────── */
+.camera-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  position: relative;
+}
+
+.camera-wrap {
+  position: relative;
+  background: #000;
+  aspect-ratio: 16/9;
+}
+
+#videoEl {
+  width: 100%; height: 100%; object-fit: cover;
+  transform: scaleX(-1);
+  display: block;
+}
+
+#overlayCanvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  transform: scaleX(-1);
+}
+
+.camera-placeholder {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px; color: var(--muted);
+}
+.camera-placeholder svg { opacity: .3; }
+.camera-placeholder p { font-size: 14px; font-family: var(--font-mono); }
+
+/* Hold progress bar at top of camera */
+.hold-bar {
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--border); z-index: 5;
+}
+.hold-bar-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+  transition: width .05s linear;
+  border-radius: 2px;
+}
+
+/* Detected letter overlay */
+.letter-badge {
+  position: absolute; bottom: 16px; left: 16px;
+  display: flex; align-items: baseline; gap: 8px;
+  background: #000000cc; backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: 12px; padding: 10px 16px;
+  font-family: var(--font-mono);
+}
+.letter-big { font-size: 36px; font-weight: 500; color: var(--accent); line-height: 1; }
+.conf-text  { font-size: 12px; color: var(--muted); }
+
+/* Recording indicator */
+.rec-badge {
+  position: absolute; top: 16px; left: 16px;
+  display: none; align-items: center; gap: 8px;
+  background: #ff4d6d22; border: 1px solid var(--danger);
+  border-radius: 100px; padding: 6px 14px;
+  font-size: 12px; font-family: var(--font-mono); color: var(--danger);
+}
+.rec-badge.visible { display: flex; }
+.rec-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); animation: pulse 1s infinite; }
+
+/* ── Camera controls ─────────────────────────────────────────────────────── */
+.camera-controls {
+  padding: 16px 20px;
+  display: flex; align-items: center; gap: 10px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 8px 18px; border-radius: 8px;
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: .05em;
+  border: 1px solid var(--border);
+  cursor: pointer; transition: all .15s;
+  background: var(--surface); color: var(--text);
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.btn-primary {
+  background: var(--accent); color: #000;
+  border-color: var(--accent); font-weight: 500;
+}
+.btn-primary:hover { background: #00ffb3; border-color: #00ffb3; color: #000; }
+.btn-primary:disabled { background: var(--surface); color: var(--muted); border-color: var(--border); }
+
+.btn-danger { border-color: var(--danger); color: var(--danger); }
+.btn-danger:hover { background: var(--danger); color: #fff; }
+
+.btn-rec {
+  border-color: var(--danger); color: var(--danger);
+}
+.btn-rec.recording {
+  background: var(--danger); color: #fff;
+}
+
+/* ── Right panel ─────────────────────────────────────────────────────────── */
+.right-panel {
+  display: flex; flex-direction: column; gap: 16px;
+}
+
+.panel-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+}
+.panel-label {
+  font-size: 10px; font-family: var(--font-mono);
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 12px;
+}
+
+/* Word display */
+.word-display {
+  font-family: var(--font-head);
+  font-size: 40px; font-weight: 700;
+  letter-spacing: -1px; color: var(--text);
+  min-height: 52px;
+  display: flex; align-items: center; gap: 2px;
+}
+.cursor-blink { animation: blink .9s steps(1) infinite; color: var(--accent); }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* Sentence display */
+.sentence-display {
+  font-size: 15px; line-height: 1.7;
+  color: var(--text); min-height: 60px;
+  font-weight: 300;
+}
+.sentence-display .word-token {
+  display: inline-block; margin-right: 6px;
+}
+.sentence-display .word-token.latest {
+  color: var(--accent);
+}
+
+/* Matched phrase flash */
+.matched-phrase {
+  padding: 12px 16px; border-radius: 10px;
+  background: #00e5a010; border: 1px solid #00e5a030;
+  color: var(--accent); font-size: 14px;
+  display: none;
+}
+.matched-phrase.visible { display: block; }
+
+/* Sentence mode result */
+.sent-result {
+  font-size: 18px; font-weight: 500;
+  color: var(--text); min-height: 28px; line-height: 1.5;
+}
+.sent-conf { font-size: 12px; font-family: var(--font-mono); color: var(--muted); margin-top: 4px; }
+.sent-progress {
+  height: 4px; background: var(--border); border-radius: 2px; margin-top: 12px;
+  overflow: hidden;
+}
+.sent-progress-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+  transition: width .1s linear; border-radius: 2px;
+}
+
+/* Shortcuts legend */
+.shortcuts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.shortcut-row { display: flex; align-items: center; gap: 8px; }
+kbd {
+  display: inline-block; padding: 2px 7px; border-radius: 5px;
+  background: var(--surface); border: 1px solid var(--border);
+  font-family: var(--font-mono); font-size: 10px; color: var(--muted);
+  min-width: 36px; text-align: center;
+}
+.shortcut-desc { font-size: 11px; color: var(--muted); }
+
+/* Phrase cheatsheet */
+.phrase-grid { display: grid; grid-template-columns: 1fr; gap: 4px; max-height: 200px; overflow-y: auto; }
+.phrase-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 8px; border-radius: 6px;
+  font-size: 12px; cursor: pointer; transition: background .15s;
+}
+.phrase-row:hover { background: var(--surface); }
+.phrase-key  { font-family: var(--font-mono); color: var(--accent2); font-size: 11px; }
+.phrase-val  { color: var(--muted); font-size: 11px; max-width: 160px; text-align: right; }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .main-layout { grid-template-columns: 1fr; }
+  nav { padding: 16px 20px; }
+  .hero { padding: 40px 20px 24px; }
+  .main-layout { padding: 0 20px 40px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    HandTalk India
+  </div>
+  <div class="status-pill" id="statusPill">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">disconnected</span>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-tag">Indian Sign Language · Real-Time AI</div>
+  <h1>Sign.<br>Speak.<br>Connect.</h1>
+  <p>Real-time ISL recognition powered by MediaPipe and TensorFlow — running entirely on your device.</p>
+
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="btnWord" onclick="setMode('WORD')">Word mode</button>
+    <button class="mode-btn"        id="btnSent" onclick="setMode('SENTENCE')">Sentence mode</button>
+  </div>
+</div>
+
+<div class="main-layout">
+
+  <!-- Camera -->
+  <div class="camera-card">
+    <div class="camera-wrap">
+      <video id="videoEl" autoplay playsinline muted></video>
+      <canvas id="overlayCanvas"></canvas>
+
+      <div class="camera-placeholder" id="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+          <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+        </svg>
+        <p>Click "Start Prediction" to begin</p>
+      </div>
+
+      <div class="hold-bar"><div class="hold-bar-fill" id="holdBar"></div></div>
+
+      <div class="letter-badge" id="letterBadge" style="display:none">
+        <span class="letter-big" id="letterBig">-</span>
+        <span class="conf-text"  id="confText">0%</span>
+      </div>
+
+      <div class="rec-badge" id="recBadge">
+        <div class="rec-dot"></div>
+        Recording…
+      </div>
+    </div>
+
+    <div class="camera-controls">
+      <button class="btn btn-primary" id="btnStart" onclick="startPrediction()">
+        ▶ Start Prediction
+      </button>
+      <button class="btn" id="btnStop" onclick="stopPrediction()" disabled>
+        ■ Stop
+      </button>
+
+      <!-- Word mode controls -->
+      <div id="wordControls" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="sendCmd('SPACE')"     title="Confirm word">Space</button>
+        <button class="btn" onclick="sendCmd('BACKSPACE')" title="Delete letter">⌫</button>
+        <button class="btn" onclick="sendCmd('ENTER')"     title="Speak sentence">Speak</button>
+        <button class="btn btn-danger" onclick="sendCmd('CLEAR')">Clear</button>
+      </div>
+
+      <!-- Sentence mode controls -->
+      <div id="sentControls" style="display:none">
+        <button class="btn btn-rec" id="btnRec" onclick="toggleRecording()">
+          ● Record phrase
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="right-panel">
+
+    <!-- Word mode panels -->
+    <div id="wordPanels">
+      <div class="panel-card">
+        <div class="panel-label">Current word</div>
+        <div class="word-display">
+          <span id="wordDisplay"></span><span class="cursor-blink">|</span>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-label">Sentence</div>
+        <div class="sentence-display" id="sentenceDisplay">
+          <span style="color:var(--muted);font-size:13px">Sign letters to begin…</span>
+        </div>
+        <div class="matched-phrase" id="matchedPhrase"></div>
+      </div>
+    </div>
+
+    <!-- Sentence mode panel -->
+    <div id="sentPanel" style="display:none">
+      <div class="panel-card">
+        <div class="panel-label">Detected phrase</div>
+        <div class="sent-result" id="sentResult">—</div>
+        <div class="sent-conf"   id="sentConf"></div>
+        <div class="sent-progress">
+          <div class="sent-progress-fill" id="sentProgress"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shortcuts -->
+    <div class="panel-card">
+      <div class="panel-label">Controls</div>
+      <div class="shortcuts" id="shortcutsWord">
+        <div class="shortcut-row"><kbd>Space</kbd><span class="shortcut-desc">Confirm word</span></div>
+        <div class="shortcut-row"><kbd>⌫</kbd>    <span class="shortcut-desc">Delete letter</span></div>
+        <div class="shortcut-row"><kbd>Enter</kbd><span class="shortcut-desc">Speak sentence</span></div>
+        <div class="shortcut-row"><kbd>C</kbd>    <span class="shortcut-desc">Clear all</span></div>
+      </div>
+      <div class="shortcuts" id="shortcutsSent" style="display:none">
+        <div class="shortcut-row"><kbd>R</kbd><span class="shortcut-desc">Start / stop recording</span></div>
+      </div>
+    </div>
+
+    <!-- Common phrases -->
+    <div class="panel-card">
+      <div class="panel-label">Common ISL phrases</div>
+      <div class="phrase-grid" id="phraseGrid"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const PHRASES = {
+  "HELLO":"Hello!","HI":"Hi there!","BYE":"Goodbye!","THANKS":"Thank you!",
+  "SORRY":"I am sorry!","HELP":"I need help!","WATER":"I need water.",
+  "DOCTOR":"I need a doctor.","YES":"Yes.","NO":"No.","LOVE":"I love you.",
+  "HAPPY":"I am happy.","STOP":"Please stop.","WAIT":"Please wait.",
+  "HOWRU":"How are you?","NAME":"What is your name?","FOOD":"I want food.",
+  "MEDICINE":"I need medicine.","PAIN":"I am in pain.","TIRED":"I am tired.",
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let ws        = null;
+let stream    = null;
+let mode      = "WORD";
+let active    = false;
+let recording = false;
+let frameLoop = null;
+
+const videoEl      = document.getElementById("videoEl");
+const overlayCanvas= document.getElementById("overlayCanvas");
+const ctx          = overlayCanvas.getContext("2d");
+
+// ── Build phrase grid ─────────────────────────────────────────────────────────
+const phraseGrid = document.getElementById("phraseGrid");
+Object.entries(PHRASES).forEach(([k,v]) => {
+  const row = document.createElement("div");
+  row.className = "phrase-row";
+  row.innerHTML = `<span class="phrase-key">${k}</span><span class="phrase-val">${v}</span>`;
+  phraseGrid.appendChild(row);
+});
+
+// ── Mode toggle ───────────────────────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  document.getElementById("btnWord").classList.toggle("active", m === "WORD");
+  document.getElementById("btnSent").classList.toggle("active", m === "SENTENCE");
+  document.getElementById("wordControls").style.display = m === "WORD" ? "flex" : "none";
+  document.getElementById("sentControls").style.display = m === "SENTENCE" ? "flex" : "none";
+  document.getElementById("wordPanels").style.display   = m === "WORD" ? "block" : "none";
+  document.getElementById("sentPanel").style.display    = m === "SENTENCE" ? "block" : "none";
+  document.getElementById("shortcutsWord").style.display= m === "WORD" ? "grid" : "none";
+  document.getElementById("shortcutsSent").style.display= m === "SENTENCE" ? "grid" : "none";
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify({cmd:"SET_MODE", mode:m}));
+  recording = false;
+  updateRecUI(false);
+}
+
+// ── WebSocket setup ───────────────────────────────────────────────────────────
+function connectWS() {
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  ws = new WebSocket(`${proto}://${location.host}/ws/predict/`);
+
+  ws.onopen = () => {
+    setStatus("connected");
+    ws.send(JSON.stringify({cmd:"SET_MODE", mode}));
+  };
+  ws.onclose   = () => setStatus("disconnected");
+  ws.onerror   = () => setStatus("error");
+  ws.onmessage = (e) => handleMessage(JSON.parse(e.data));
+}
+
+function setStatus(s) {
+  const pill = document.getElementById("statusPill");
+  const dot  = document.getElementById("statusDot");
+  const txt  = document.getElementById("statusText");
+  pill.className = "status-pill" + (s === "connected" ? " connected" : "");
+  dot.className  = "status-dot" + (s === "connected" ? " pulse" : "");
+  txt.textContent = s;
+}
+
+// ── Start / stop ──────────────────────────────────────────────────────────────
+async function startPrediction() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({video:{width:640,height:480}});
+    videoEl.srcObject = stream;
+    document.getElementById("placeholder").style.display = "none";
+    document.getElementById("letterBadge").style.display = "flex";
+    document.getElementById("btnStart").disabled = true;
+    document.getElementById("btnStop").disabled  = false;
+    active = true;
+    connectWS();
+    sendFrames();
+  } catch(err) {
+    alert("Camera access denied: " + err.message);
+  }
+}
+
+function stopPrediction() {
+  active = false;
+  if (frameLoop) clearTimeout(frameLoop);
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  if (ws) ws.close();
+  videoEl.srcObject = null;
+  document.getElementById("placeholder").style.display = "flex";
+  document.getElementById("letterBadge").style.display = "none";
+  document.getElementById("btnStart").disabled = false;
+  document.getElementById("btnStop").disabled  = true;
+  document.getElementById("holdBar").style.width = "0%";
+}
+
+// ── Frame capture → WebSocket ─────────────────────────────────────────────────
+const capCanvas = document.createElement("canvas");
+const capCtx    = capCanvas.getContext("2d");
+const FRAME_MS  = 66; // ~15fps — enough for real-time, light on CPU
+
+function sendFrames() {
+  if (!active) return;
+  if (ws && ws.readyState === 1 && videoEl.readyState >= 2) {
+    const w = videoEl.videoWidth  || 640;
+    const h = videoEl.videoHeight || 480;
+    capCanvas.width  = w;
+    capCanvas.height = h;
+    // The video is CSS-mirrored for the user. We must un-mirror before
+    // sending to the backend so the model sees the same orientation as training.
+    capCtx.save();
+    capCtx.scale(-1, 1);
+    capCtx.drawImage(videoEl, -w, 0);
+    capCtx.restore();
+    capCanvas.toBlob(blob => {
+      if (blob && ws && ws.readyState === 1) ws.send(blob);
+    }, "image/jpeg", 0.8);
+  }
+  frameLoop = setTimeout(sendFrames, FRAME_MS);
+}
+
+// ── Message handler ───────────────────────────────────────────────────────────
+function handleMessage(data) {
+  if (data.type === "prediction") {
+    // Hold progress bar
+    const prog = (data.hold_progress || 0) * 100;
+    document.getElementById("holdBar").style.width = prog + "%";
+
+    if (mode === "WORD") {
+      // Letter badge
+      const lbl  = data.letter || "-";
+      const conf = Math.round((data.confidence || 0) * 100);
+      document.getElementById("letterBig").textContent  = lbl;
+      document.getElementById("confText").textContent   = conf + "%";
+      document.getElementById("letterBig").style.color  =
+        data.hand_detected ? "var(--accent)" : "var(--muted)";
+
+      // Word + sentence
+      document.getElementById("wordDisplay").textContent = data.word || "";
+      renderSentence(data.sentence || "");
+
+      if (data.letter_committed) flashLetter();
+    }
+
+    if (mode === "SENTENCE") {
+      // Recording progress bar
+      if (data.recording && data.seq_len) {
+        const pct = ((data.buffer_frames||0) / data.seq_len * 100).toFixed(0);
+        document.getElementById("sentProgress").style.width = pct + "%";
+      }
+      if (data.sentence_result) {
+        document.getElementById("sentResult").textContent = data.sentence_result;
+        document.getElementById("sentConf").textContent   =
+          "Confidence: " + Math.round((data.sentence_conf||0)*100) + "%";
+        document.getElementById("sentProgress").style.width = "0%";
+        updateRecUI(false);
+        recording = false;
+        speak(data.sentence_result);
+      }
+    }
+  }
+
+  if (data.type === "word_update") {
+    document.getElementById("wordDisplay").textContent = data.word || "";
+    renderSentence(data.sentence || "");
+    if (data.matched) {
+      showMatchedPhrase(data.matched);
+      speak(data.matched);
+    } else if (data.speak) {
+      speak(data.speak);
+    }
+  }
+
+  if (data.type === "recording_status") {
+    recording = data.action === "recording_started";
+    updateRecUI(recording);
+  }
+}
+
+function renderSentence(s) {
+  const el = document.getElementById("sentenceDisplay");
+  if (!s) {
+    el.innerHTML = '<span style="color:var(--muted);font-size:13px">Sign letters to begin…</span>';
+    return;
+  }
+  const words = s.split(" ");
+  el.innerHTML = words.map((w, i) =>
+    `<span class="word-token${i===words.length-1?" latest":""}">${w}</span>`
+  ).join("");
+}
+
+function showMatchedPhrase(phrase) {
+  const el = document.getElementById("matchedPhrase");
+  el.textContent = "★ " + phrase;
+  el.classList.add("visible");
+  setTimeout(() => el.classList.remove("visible"), 4000);
+}
+
+function flashLetter() {
+  const el = document.getElementById("letterBig");
+  el.style.transform = "scale(1.3)";
+  el.style.transition = "transform .15s";
+  setTimeout(() => { el.style.transform = "scale(1)"; }, 150);
+}
+
+function updateRecUI(isRec) {
+  document.getElementById("recBadge").classList.toggle("visible", isRec);
+  const btn = document.getElementById("btnRec");
+  btn.classList.toggle("recording", isRec);
+  btn.textContent = isRec ? "■ Stop recording" : "● Record phrase";
+  if (!isRec) document.getElementById("sentProgress").style.width = "0%";
+}
+
+// ── Commands ──────────────────────────────────────────────────────────────────
+function sendCmd(cmd) {
+  if (!ws || ws.readyState !== 1) return;
+
+  if (cmd === "CLEAR") {
+    // Reset all UI immediately without waiting for server
+    document.getElementById("wordDisplay").textContent = "";
+    document.getElementById("letterBig").textContent   = "-";
+    document.getElementById("confText").textContent    = "0%";
+    document.getElementById("holdBar").style.width     = "0%";
+    document.getElementById("matchedPhrase").classList.remove("visible");
+    renderSentence("");
+    ws.send(JSON.stringify({cmd}));
+    return;
+  }
+
+  if (cmd === "ENTER") {
+    const sentText = document.getElementById("sentenceDisplay").innerText.trim();
+    if (sentText && sentText !== "Sign letters to begin…") {
+      speak(sentText);
+    }
+    ws.send(JSON.stringify({cmd}));
+    return;
+  }
+
+  ws.send(JSON.stringify({cmd}));
+}
+
+function toggleRecording() {
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify({cmd:"TOGGLE_RECORDING"}));
+}
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
+document.addEventListener("keydown", e => {
+  if (!active) return;
+  if (mode === "WORD") {
+    if (e.code === "Space")     { e.preventDefault(); sendCmd("SPACE"); }
+    if (e.code === "Backspace") sendCmd("BACKSPACE");
+    if (e.code === "Enter")     sendCmd("ENTER");
+    if (e.key  === "c" || e.key === "C") sendCmd("CLEAR");
+  }
+  if (mode === "SENTENCE") {
+    if (e.key === "r" || e.key === "R") toggleRecording();
+  }
+});
+
+// ── TTS ───────────────────────────────────────────────────────────────────────
+// speechSynthesis requires a prior user gesture to work in Chrome/Edge.
+// We prime it on the very first click anywhere so it's always ready.
+let ttsReady = false;
+document.addEventListener("click", () => {
+  if (!ttsReady && window.speechSynthesis) {
+    const dummy = new SpeechSynthesisUtterance("");
+    window.speechSynthesis.speak(dummy);
+    ttsReady = true;
+  }
+}, { once: false });
+
+function speak(text) {
+  if (!text || !window.speechSynthesis) return;
+  // Strip placeholder text
+  if (text === "Sign letters to begin…" || text === "—") return;
+  window.speechSynthesis.cancel();
+  const utt  = new SpeechSynthesisUtterance(text);
+  utt.lang   = "en-IN";
+  utt.rate   = 0.92;
+  utt.pitch  = 1.0;
+  utt.volume = 1.0;
+  // Fallback: if en-IN voice not available, use default
+  const voices = window.speechSynthesis.getVoices();
+  const indian = voices.find(v => v.lang === "en-IN");
+  if (indian) utt.voice = indian;
+  window.speechSynthesis.speak(utt);
+}
+</script>
+
+</body>
+</html>

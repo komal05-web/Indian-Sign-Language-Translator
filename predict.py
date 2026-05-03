@@ -858,13 +858,13 @@ def run_live_detection():
         cv2.imshow("ISL Real-Time Translator", canvas)
 
         # ── Key handling ──────────────────────────────────────────────────────
-        key = cv2.waitKey(1) & 0xFF
+        key = cv2.waitKey(10) & 0xFF
 
         if key == ord("q"):
             print("[Predict] Quitting …")
             break
 
-        elif key == ord("m"):
+        elif key in (ord("m"), ord("M")):
             mode = "SENTENCE" if mode == "WORD" else "WORD"
             smoother.reset()
             builder.clear()

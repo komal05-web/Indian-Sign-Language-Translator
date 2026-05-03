@@ -1,0 +1,14 @@
+django==4.2.13
+channels==4.0.0
+channels-redis==4.1.0
+daphne==4.0.0
+opencv-python==4.10.0.84
+numpy==1.26.4
+tensorflow==2.16.2
+mediapipe==0.10.13
+scikit-learn
+pyttsx3
+pywin32; sys_platform == "win32"
+python-dotenv
+whitenoise==6.6.0
+gunicorn==21.2.0
