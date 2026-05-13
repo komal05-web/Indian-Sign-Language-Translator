@@ -226,4 +226,4 @@ Key constants in `predict.py` and `utils.py`:
 
 This project is licensed under the **MIT License** — see [LICENSE.txt](LICENSE.txt) for details.
 
-Copyright © 2026 heykayy & komal05-web
+Copyright © komal05-web
