@@ -1,18 +1,51 @@
-# ISL Real-Time Translator
+# 🤟 ISL Real-Time Translator — HandTalk India
 
-A real-time **HandTalk India : Indian Sign Language (ISL) recognition system** built with TensorFlow, MediaPipe, and OpenCV.  
-It runs entirely on CPU and supports two detection modes — letter-by-letter spelling and full-sentence signing.
+A real-time **Indian Sign Language (ISL) translator** that uses computer vision and deep learning to recognize hand signs via webcam — supporting both **letter-by-letter word building** and **full-sentence gesture recognition**. Runs entirely on CPU.
+
+---
+
+## 📌 Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Project Structure](#project-structure)
+- [Tech Stack](#tech-stack)
+- [Installation (standalone script)](#installation-standalone-script)
+- [Web App (isl_web/)](#web-app-isl_web)
+- [Usage](#usage)
+- [Keyboard Controls](#keyboard-controls)
+- [Model Architecture](#model-architecture)
+- [Configuration](#configuration)
+- [Dataset Reference](#dataset-reference)
+- [Known Limitations](#known-limitations)
+- [Authors](#authors)
+- [License](#license)
+
+---
+
+## Overview
+
+The ISL Translator processes live webcam frames, detects hand landmarks using **MediaPipe**, crops the hand region, and classifies it using a fine-tuned **MobileNetV2** model. It supports two operating modes:
+
+- **Word Mode** — Spell out words letter by letter using ISL alphabet signs. Letters commit after a stable hold, then assemble into a sentence that can be spoken aloud via text-to-speech.
+- **Sentence Mode** — Record a continuous gesture sequence (pose + both hands) and predict a complete ISL phrase using an LSTM-based sentence model.
+
+There are two ways to run it: the original **standalone script** (`predict.py`, opens an OpenCV window), or the **web app** (`isl_web/`, a Django + Channels app with a browser UI, live camera feed, and the same trained models running behind a WebSocket).
 
 ---
 
 ## Features
 
-- **Word Mode** — detects individual ISL hand signs (A–Z) and assembles them into words and sentences
-- **Sentence Mode** — records a sequence of body/hand landmarks and classifies complete signed phrases
-- **Text-to-Speech** — speaks recognised words and matched phrases aloud via `pyttsx3`
-- **ISL Phrase Dictionary** — 50+ common ISL phrases auto-matched as you type
-- **Live hold-progress ring** — visual feedback shows when a letter is about to commit
-- **Screenshot saving** — press `S` at any time to save the current frame
+- 🎥 Real-time webcam inference with threaded capture for low-latency processing
+- 🖐️ MediaPipe hand & holistic landmark detection
+- 🔤 **Word Mode** — letter-by-letter sign spelling with sentence builder
+- 💬 **Sentence Mode** — full-phrase recognition from gesture sequences
+- 🔊 Text-to-speech output via `pyttsx3` (script) / Web Speech API (web app)
+- 📊 FPS counter and confidence display overlay
+- 💾 Screenshot saving of predictions (`S` key)
+- 📋 Phrase cheat-sheet overlay, toggleable (`H` key)
+- 🧠 Prediction smoother — sliding-window majority vote to eliminate flicker
+- 🌐 Full browser-based UI (`isl_web/`) with the same keyboard shortcuts, an ISL alphabet reference chart, and a demo video section
 
 ---
 
@@ -20,159 +53,195 @@ It runs entirely on CPU and supports two detection modes — letter-by-letter sp
 
 ```
 ISL/
+├── predict.py                  # Standalone real-time translator (OpenCV window)
+├── word_model.py                # MobileNetV2 architecture + fine-tuning helpers
+├── utils.py                     # Data generators, smoothers, drawing utils
+├── runtime.txt                  # Python version for the standalone script
+├── LICENSE.txt
 │
-├── word/                          # Word-mode artefacts (auto-created)
-│   ├── isl_best_model.keras       # Final trained letter model  [gitignored]
-│   ├── isl_phase1_best.keras      # Phase 1 checkpoint          [gitignored]
-│   ├── label_map.json             # Class index → letter map    [gitignored]
-│   └── plots/                     # Training curve images       [gitignored]
+├── word/
+│   ├── isl_best_model.keras     # Trained letter/word model      [gitignored]
+│   ├── label_map.json           # Class index → letter map       [gitignored]
+│   ├── sentence_builder.py      # Letter → word → sentence engine + phrase dict
+│   ├── train.ipynb              # Train the letter model
+│   └── plots/                   # Training curve images          [gitignored]
 │
-├── sentence/                      # Sentence-mode artefacts
-│   ├── sentence_model.keras       # Trained sentence model      [gitignored]
-│   ├── sentence_label_map.json    # Class index → phrase map    [gitignored]
-│   └── sentence_model.py          # Model architecture + constants
+├── sentence/
+│   ├── sentence_model.keras     # Trained sentence model         [gitignored]
+│   ├── sentence_label_map.json  # Class index → phrase map       [gitignored]
+│   ├── sentence_model.py        # LSTM architecture + constants
+│   └── train_sentence.ipynb     # Train the sentence model
 │
-├── saved_predictions/             # Screenshots saved at runtime [gitignored]
-│
-├── train.ipynb                    # ← Train the letter (word) model
-├── word_model.py                  # MobileNetV2 architecture + fine-tune helpers
-├── utils.py                       # Data generators, smoothers, drawing utils
-├── predict.py                     # Real-time webcam inference (both modes)
-├── sentence_builder.py            # Letter → word → sentence engine + phrase dict
-│
-├── .gitignore
-└── README.md
+└── isl_web/                     # Django + Channels web app (browser UI)
+    ├── manage.py
+    ├── requirements.txt
+    ├── Procfile / build.sh / startup.py   # Render deployment config
+    ├── isl_web/                 # Project settings, urls, asgi
+    └── predictor/                # App: consumers.py, predictor_engine.py,
+                                   # templates, and static assets
 ```
 
 ---
 
-## Requirements
+## Tech Stack
 
-- Python 3.9 – 3.11
-- Webcam
+| Component | Library / Tool |
+|---|---|
+| Language | Python 3.10 – 3.11 |
+| Deep Learning | TensorFlow / Keras |
+| Base Model | MobileNetV2 (ImageNet weights) |
+| Hand Detection | MediaPipe |
+| Computer Vision | OpenCV |
+| Text-to-Speech | pyttsx3 (script) / Web Speech API (web app) |
+| Web Framework | Django + Channels + Daphne (web app only) |
+| Numerics | NumPy |
+| Visualization | Matplotlib |
 
-Install dependencies:
+---
+
+## Installation (standalone script)
+
+### 1. Clone the repository
 
 ```bash
-pip install tensorflow==2.15 mediapipe opencv-python pyttsx3 scikit-learn matplotlib numpy
+git clone https://github.com/komal05-web/Indian-Sign-Language-Translator.git
+cd Indian-Sign-Language-Translator
 ```
 
-> **GPU users:** replace `tensorflow` with `tensorflow-gpu` for faster training.  
-> Mixed-precision (`float16`) is automatically beneficial only on GPU — the training script leaves it off for CPU.
+### 2. Create and activate a virtual environment
 
----
-
-## Quick Start
-
-### 1 — Prepare your dataset
-
-Organise images into one sub-folder per letter:
-
-```
-isl_word/
-├── A/   (1200 images)
-├── B/   (1200 images)
-...
-└── Z/   (1200 images)
+```bash
+python -m venv venv
+# Windows
+venv\Scripts\activate
+# macOS / Linux
+source venv/bin/activate
 ```
 
-### 2 — Train the letter model
+### 3. Install dependencies
 
-Open `train.ipynb` and update the dataset path at the top:
-
-```python
-DATASET_PATH = r"C:\path\to\isl_word"
+```bash
+pip install tensorflow==2.16 opencv-python mediapipe pyttsx3 numpy matplotlib scikit-learn
 ```
 
-Run all cells. Training runs in two phases:
+> Python 3.10–3.11 recommended (see `runtime.txt`). GPU users can swap in `tensorflow-gpu` for faster training.
 
-| Phase | What happens | Typical duration |
-|---|---|---|
-| Phase 1 | Classification head trained, MobileNetV2 frozen | ~5–10 min |
-| Phase 2 | Top 30 MobileNetV2 layers fine-tuned | ~5–8 min |
+### 4. Add trained models
 
-Output files saved automatically to `word/`.
+Place these (trained separately, not included in the repo):
 
-### 3 — Run live detection
+- `word/isl_best_model.keras`
+- `word/label_map.json`
+- `sentence/sentence_model.keras`
+- `sentence/sentence_label_map.json`
+
+### 5. Run it
 
 ```bash
 python predict.py
 ```
 
+A webcam window titled **"ISL Real-Time Translator"** opens, starting in Word Mode by default.
+
+### Training the letter model
+
+```bash
+python word_model.py
+```
+
+Training history plots save to `word/plots/`.
+
 ---
 
-## Controls
+## Web App (isl_web/)
 
-### Both modes
+A Django + Channels version with a full browser UI — live webcam feed, mode toggle, phrase cheat-sheet, ISL alphabet reference, and a demo video section, all driven by the same trained models over a WebSocket.
+
+```bash
+cd isl_web
+python -m venv venv
+venv\Scripts\activate            # Windows; source venv/bin/activate on Mac/Linux
+pip install -r requirements.txt
+copy .env.example .env            # then edit ISL_ROOT and SECRET_KEY inside
+python manage.py migrate
+python manage.py runserver
+```
+
+Open `http://127.0.0.1:8000/`, allow camera access, and start signing. See `isl_web/README.md` for full setup, environment variables, and Render deployment instructions.
+
+---
+
+## Usage
+
+### Global
+
 | Key | Action |
-|---|---|
-| `M` | Toggle Word ↔ Sentence mode |
-| `S` | Save screenshot |
-| `Q` | Quit |
+|-----|--------|
+| `M` | Toggle between Word / Sentence mode |
+| `Q` | Quit (script) / stop session (web app) |
+| `S` | Save a screenshot of the current frame |
 
 ### Word Mode
+
 | Key | Action |
-|---|---|
-| `SPACE` | Confirm current word, start next word |
+|-----|--------|
+| `SPACE` | Confirm current word → push to sentence |
 | `BACKSPACE` | Delete last letter (or restore last word) |
-| `ENTER` | Speak full sentence / show matched phrase |
-| `C` | Clear everything |
-| `H` | Toggle ISL phrase cheat-sheet |
+| `ENTER` | Speak the full sentence aloud |
+| `C` | Clear the sentence buffer |
+| `H` | Toggle the phrase cheat-sheet overlay |
 
 ### Sentence Mode
+
 | Key | Action |
-|---|---|
-| `R` | Start / cancel a signing recording |
+|-----|--------|
+| `R` | Start / cancel gesture recording |
 
----
-
-## Training Configuration
-
-Key hyper-parameters in `train.ipynb` (tuned for 1200 images/class):
-
-| Parameter | Value | Notes |
-|---|---|---|
-| `BATCH_SIZE` | 64 | Increase to 128 if ≥8 GB RAM free |
-| `PHASE1_EPOCHS` | 20 | Early stopping kicks in earlier with more data |
-| `PHASE1_LR` | 1e-3 | Safe with batch size 64 |
-| `FINE_TUNE_LR` | 5e-5 | Conservative enough to avoid catastrophic forgetting |
-| `UNFREEZE_N` | 30 | Top 30 MobileNetV2 layers unfrozen in Phase 2 |
-| `DATA_WORKERS` | 8 | Set to your physical CPU core count |
+> After recording `SEQUENCE_LEN` frames, the model auto-predicts and speaks the phrase.
 
 ---
 
 ## Model Architecture
 
+### Word / Letter Model (`word_model.py`)
+
+Built on **MobileNetV2** (pretrained on ImageNet) with a custom classification head:
+
 ```
-Input (224×224×3)
-    └── MobileNetV2 (ImageNet pretrained, frozen in Phase 1)
-            └── GlobalAveragePooling2D
-                └── BatchNormalization
-                    └── Dense(256, relu) → Dropout(0.4)
-                        └── Dense(128, relu) → Dropout(0.3)
-                            └── Dense(26, softmax)
+MobileNetV2 (frozen base)
+    → GlobalAveragePooling2D
+    → BatchNormalization
+    → Dense(256, relu) → Dropout(0.4)
+    → Dense(128, relu) → Dropout(0.3)
+    → Dense(num_classes, softmax)
 ```
 
-Total params: ~2.6 M | Trainable in Phase 1: ~367 K
+**Two-phase training:**
+1. **Phase 1** — Base frozen; only the classification head trained (`lr = 1e-3`)
+2. **Phase 2** — Top 30 base layers unfrozen for fine-tuning (`lr = 5e-5`)
+
+### Sentence Model (`sentence/sentence_model.py`)
+
+LSTM-based sequence classifier trained on MediaPipe holistic landmark sequences (pose + both hands). Input shape: `(SEQUENCE_LEN, FEATURE_DIM)`.
 
 ---
 
-## Inference Pipeline (Word Mode)
+## Configuration
 
-1. MediaPipe Hands detects the **primary hand** (closest to frame centre)
-2. Hand ROI is cropped with 30% padding
-3. Skin segmentation replaces the background with the training-set green
-4. ROI resized to 224×224, normalised to `[0, 1]`
-5. Letter model predicts class; majority-vote smoother (3 frames) removes flicker
-6. `SentenceBuilder` commits a letter only after it is held stably for **10 frames** (~0.33 s at 30 fps)
+Key constants in `predict.py` / `utils.py`:
 
----
-
-## Known Limitations
-
-- Designed for **static ISL hand signs** (A–Z alphabet); dynamic/motion signs are handled by Sentence Mode only
-- Background segmentation uses HSV + YCrCb skin detection — performance may vary under poor or inconsistent lighting
-- Sentence Mode requires a separately trained LSTM/GRU model (`train_sentence.py`, not included here)
+| Parameter | Default | Description |
+|---|---|---|
+| `IMG_SIZE` | `224` | Input image size for the model |
+| `BATCH_SIZE` | `16`–`64` | Training batch size |
+| `CONFIDENCE_THRESHOLD` | `0.55` | Minimum confidence to accept a word prediction |
+| `SENTENCE_CONFIDENCE_THRESHOLD` | `0.55` | Minimum confidence for sentence prediction |
+| `HOLD_FRAMES` | `10` | Frames a sign must be held to commit a letter (~0.33s) |
+| `COOLDOWN_FRAMES` | `12` | Frames to ignore after a commit (~0.40s) |
+| `BAD_FRAME_TOLERANCE` | `3` | Noisy frames tolerated before resetting hold counter |
+| `SMOOTHING_WINDOW` | `3` | Sliding window size for prediction smoother |
+| `PADDING_FRACTION` | `0.30` | Padding around the hand crop bounding box |
+| `CAMERA_INDEX` | `0` | Webcam index |
 
 ---
 
@@ -181,17 +250,27 @@ Total params: ~2.6 M | Trainable in Phase 1: ~367 K
 Letter vocabulary sourced from:
 https://www.kaggle.com/datasets/prathumarikeri/indian-sign-language-isl
 
-Phrase vocabulary sourced from:  
+Phrase vocabulary sourced from:
 https://www.kaggle.com/datasets/biswajit002/isl-video-sentences-dataset-for-recognition
+
+---
+
+## Known Limitations
+
+- Designed for **static ISL hand signs** (A–Z alphabet); dynamic/motion signs are handled by Sentence Mode only
+- Background/skin segmentation may vary under poor or inconsistent lighting
+- Sentence Mode requires a separately trained LSTM/GRU model
+
+---
+
+## Authors
+
+Creators of **HandTalk India**: **komal05-web** ([GitHub](https://github.com/komal05-web)) & **heykayy**
 
 ---
 
 ## License
 
-MIT— free to use, modify, and distribute.
+This project is licensed under the **MIT License** — see [LICENSE.txt](LICENSE.txt) for details.
 
----
-
-## Author
-
-Creator of **HandTalk India** : **heykayy** & **komal05-web**
+Copyright © komal05-web
