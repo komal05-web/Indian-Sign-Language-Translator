@@ -679,8 +679,9 @@ Object.entries(PHRASES).forEach(([k,v]) => {
 // Looks for /static/predictor/alphabet/A.jpg ... Z.jpg. If a letter's image is
 // missing, it falls back to showing just the letter so nothing looks broken.
 const alphabetGrid = document.getElementById("alphabetGrid");
-// Hardcoded rather than {% static %} on purpose: these are OPTIONAL, user-added
-// assets. With ManifestStaticFilesStorage (production), {% static %} throws a
+// Hardcoded rather than using Django's static template tag on purpose: these
+// are OPTIONAL, user-added assets. With ManifestStaticFilesStorage (production),
+// that tag throws a
 // hard error for any file that wasn't present during collectstatic — which
 // would break the whole page if a letter image or demo file is missing.
 // Plain literal paths just 404 gracefully instead, which the JS below handles.
