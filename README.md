@@ -1,6 +1,6 @@
 # 🤟 ISL Real-Time Translator — HandTalk India
 
-A real-time **Indian Sign Language (ISL) translator** that uses computer vision and deep learning to recognize hand signs via webcam — supporting both **letter-by-letter word building** and **full-sentence gesture recognition**. Runs entirely on CPU.
+A real-time **Indian Sign Language (ISL) translator** that uses computer vision and deep learning to recognize hand signs via webcam — supporting both **letter-by-letter word building** and **full-sentence gesture recognition**. Runs entirely on CPU. **Live link** - https://indiansignlanguagetranslator.onrender.com/
 
 ---
 
