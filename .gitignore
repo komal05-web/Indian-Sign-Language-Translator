@@ -1,0 +1,12 @@
+myenv/
+.vscode/
+__pycache__/
+**/__pycache__/
+*.pyc
+db.sqlite3
+.env
+*.keras
+staticfiles/
+landmark_cache/
+**/landmark_cache*/
+word/plots/

@@ -1,0 +1,1039 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HandTalk India — ISL Real-Time Translator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #111118;
+  --card: #16161f;
+  --border: #ffffff0f;
+  --accent: #00e5a0;
+  --accent2: #7c6eff;
+  --danger: #ff4d6d;
+  --text: #e8e8f0;
+  --muted: #666680;
+  --font-head: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  opacity: 0.4;
+}
+
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+}
+
+nav {
+  position: relative; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 40px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  font-family: var(--font-head);
+  font-weight: 800; font-size: 20px; letter-spacing: -0.5px;
+  display: flex; align-items: center; gap: 10px;
+}
+.logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+.status-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 14px; border-radius: 100px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 12px; font-family: var(--font-mono); color: var(--muted);
+  transition: all .3s;
+}
+.status-pill.connected { border-color: var(--accent); color: var(--accent); }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.status-dot.pulse { animation: pulse 2s infinite; }
+@keyframes pulse {
+  0%,100% { opacity: 1; } 50% { opacity: .3; }
+}
+
+.hero {
+  position: relative; z-index: 2;
+  text-align: center;
+  padding: 64px 40px 40px;
+}
+.hero-tag {
+  display: inline-block;
+  padding: 4px 12px; border-radius: 100px;
+  border: 1px solid #00e5a020;
+  background: #00e5a008;
+  color: var(--accent);
+  font-size: 11px; font-family: var(--font-mono); letter-spacing: .1em;
+  text-transform: uppercase; margin-bottom: 20px;
+}
+.hero h1 {
+  font-family: var(--font-head);
+  font-size: clamp(36px, 6vw, 72px);
+  font-weight: 800; line-height: 1.0;
+  letter-spacing: -2px;
+  background: linear-gradient(135deg, #fff 30%, #00e5a0 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 16px;
+}
+.hero p {
+  color: var(--muted); font-size: 16px; font-weight: 300;
+  max-width: 480px; margin: 0 auto 40px; line-height: 1.7;
+}
+
+.mode-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 32px;
+}
+.mode-btn {
+  padding: 8px 24px; border-radius: 8px;
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: .05em;
+  border: none; cursor: pointer; transition: all .2s;
+  background: transparent; color: var(--muted);
+}
+.mode-btn.active {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.main-layout {
+  position: relative; z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 20px;
+  padding: 0 40px 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.camera-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  position: relative;
+}
+
+.camera-wrap {
+  position: relative;
+  background: #000;
+  aspect-ratio: 16/9;
+}
+
+#videoEl {
+  width: 100%; height: 100%; object-fit: cover;
+  transform: scaleX(-1);
+  display: block;
+}
+
+#overlayCanvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  transform: scaleX(-1);
+}
+
+.camera-placeholder {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px; color: var(--muted);
+}
+.camera-placeholder svg { opacity: .3; }
+.camera-placeholder p { font-size: 14px; font-family: var(--font-mono); }
+
+.hold-bar {
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--border); z-index: 5;
+}
+.hold-bar-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+  transition: width .05s linear;
+  border-radius: 2px;
+}
+
+.letter-badge {
+  position: absolute; bottom: 16px; left: 16px;
+  display: flex; align-items: baseline; gap: 8px;
+  background: #000000cc; backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: 12px; padding: 10px 16px;
+  font-family: var(--font-mono);
+}
+.letter-big { font-size: 36px; font-weight: 500; color: var(--accent); line-height: 1; }
+.conf-text { font-size: 12px; color: var(--muted); }
+
+.rec-badge {
+  position: absolute; top: 16px; left: 16px;
+  display: none; align-items: center; gap: 8px;
+  background: #ff4d6d22; border: 1px solid var(--danger);
+  border-radius: 100px; padding: 6px 14px;
+  font-size: 12px; font-family: var(--font-mono); color: var(--danger);
+}
+.rec-badge.visible { display: flex; }
+.rec-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); animation: pulse 1s infinite; }
+
+/* Screenshot flash */
+.shot-flash {
+  position: absolute; inset: 0; background: #fff; opacity: 0;
+  pointer-events: none; z-index: 6;
+}
+.shot-flash.flash { animation: shotflash .3s ease-out; }
+@keyframes shotflash { 0% { opacity: .8; } 100% { opacity: 0; } }
+
+.camera-controls {
+  padding: 16px 20px;
+  display: flex; align-items: center; gap: 10px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 8px 18px; border-radius: 8px;
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: .05em;
+  border: 1px solid var(--border);
+  cursor: pointer; transition: all .15s;
+  background: var(--surface); color: var(--text);
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.btn-primary {
+  background: var(--accent); color: #000;
+  border-color: var(--accent); font-weight: 500;
+}
+.btn-primary:hover { background: #00ffb3; border-color: #00ffb3; color: #000; }
+.btn-primary:disabled { background: var(--surface); color: var(--muted); border-color: var(--border); }
+
+.btn-danger { border-color: var(--danger); color: var(--danger); }
+.btn-danger:hover { background: var(--danger); color: #fff; }
+
+.btn-rec {
+  border-color: var(--danger); color: var(--danger);
+}
+.btn-rec.recording {
+  background: var(--danger); color: #fff;
+}
+
+.right-panel {
+  display: flex; flex-direction: column; gap: 16px;
+}
+
+.panel-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+}
+.panel-label {
+  font-size: 10px; font-family: var(--font-mono);
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 12px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.panel-label .hint { text-transform: none; letter-spacing: 0; opacity: .6; }
+
+.word-display {
+  font-family: var(--font-head);
+  font-size: 40px; font-weight: 700;
+  letter-spacing: -1px; color: var(--text);
+  min-height: 52px;
+  display: flex; align-items: center; gap: 2px;
+}
+.cursor-blink { animation: blink .9s steps(1) infinite; color: var(--accent); }
+@keyframes blink { 50% { opacity: 0; } }
+
+.sentence-display {
+  font-size: 15px; line-height: 1.7;
+  color: var(--text); min-height: 60px;
+  font-weight: 300;
+}
+.sentence-display .word-token {
+  display: inline-block; margin-right: 6px;
+}
+.sentence-display .word-token.latest {
+  color: var(--accent);
+}
+
+.matched-phrase {
+  padding: 12px 16px; border-radius: 10px;
+  background: #00e5a010; border: 1px solid #00e5a030;
+  color: var(--accent); font-size: 14px;
+  display: none;
+}
+.matched-phrase.visible { display: block; }
+
+.sent-result {
+  font-size: 18px; font-weight: 500;
+  color: var(--text); min-height: 28px; line-height: 1.5;
+}
+.sent-conf { font-size: 12px; font-family: var(--font-mono); color: var(--muted); margin-top: 4px; }
+.sent-progress {
+  height: 4px; background: var(--border); border-radius: 2px; margin-top: 12px;
+  overflow: hidden;
+}
+.sent-progress-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+  transition: width .1s linear; border-radius: 2px;
+}
+
+.shortcuts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.shortcuts.global-shortcuts { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.shortcut-row { display: flex; align-items: center; gap: 8px; }
+kbd {
+  display: inline-block; padding: 2px 7px; border-radius: 5px;
+  background: var(--surface); border: 1px solid var(--border);
+  font-family: var(--font-mono); font-size: 10px; color: var(--muted);
+  min-width: 36px; text-align: center;
+}
+.shortcut-desc { font-size: 11px; color: var(--muted); }
+
+.phrase-grid { display: grid; grid-template-columns: 1fr; gap: 4px; max-height: 200px; overflow-y: auto; }
+.phrase-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 8px; border-radius: 6px;
+  font-size: 12px; cursor: pointer; transition: background .15s;
+}
+.phrase-row:hover { background: var(--surface); }
+.phrase-key { font-family: var(--font-mono); color: var(--accent2); font-size: 11px; }
+.phrase-val { color: var(--muted); font-size: 11px; max-width: 160px; text-align: right; }
+
+/* ── How-to-use strip ────────────────────────────────────────────────────── */
+.howto-strip {
+  position: relative; z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 40px 40px;
+}
+.howto-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.howto-icon {
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 9px;
+  background: #00e5a012; color: var(--accent);
+}
+.howto-num {
+  font-family: var(--font-mono); font-size: 10px; color: var(--muted);
+  letter-spacing: .1em;
+}
+.howto-title { font-family: var(--font-head); font-weight: 700; font-size: 14px; }
+.howto-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+@media (max-width: 900px) { .howto-strip { grid-template-columns: 1fr 1fr; padding: 0 20px 32px; } }
+
+/* ── Collapsible section header ──────────────────────────────────────────── */
+.collapsible-header {
+  cursor: pointer; user-select: none;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.toggle-icon { transition: transform .2s; color: var(--muted); }
+.toggle-icon.open { transform: rotate(180deg); }
+
+/* ── Alphabet reference grid ─────────────────────────────────────────────── */
+.alphabet-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+.alphabet-cell {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  overflow: hidden;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.alphabet-cell img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.alphabet-cell .fallback-letter {
+  font-family: var(--font-head); font-weight: 700; font-size: 18px; color: var(--muted);
+}
+.alphabet-cell .cell-label {
+  position: absolute; bottom: 2px; right: 4px;
+  font-family: var(--font-mono); font-size: 9px; color: var(--accent);
+  background: #000000aa; padding: 0 4px; border-radius: 3px;
+}
+@media (max-width: 900px) { .alphabet-grid { grid-template-columns: repeat(5, 1fr); } }
+
+/* ── Demo video section ───────────────────────────────────────────────────── */
+.demo-section {
+  position: relative; z-index: 2;
+  max-width: 1400px; margin: 0 auto;
+  padding: 0 40px 40px;
+}
+.demo-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 20px;
+}
+.demo-video-wrap {
+  margin-top: 14px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #000;
+  aspect-ratio: 16/9;
+  display: flex; align-items: center; justify-content: center;
+}
+.demo-video-wrap video { width: 100%; height: 100%; object-fit: cover; }
+.demo-fallback {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  color: var(--muted); font-size: 13px; font-family: var(--font-mono);
+  text-align: center; padding: 20px;
+}
+
+@media (max-width: 900px) {
+  .main-layout { grid-template-columns: 1fr; }
+  nav { padding: 16px 20px; }
+  .hero { padding: 40px 20px 24px; }
+  .main-layout { padding: 0 20px 40px; }
+  .demo-section { padding: 0 20px 32px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    HandTalk India
+  </div>
+  <div class="status-pill" id="statusPill">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">disconnected</span>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-tag">Indian Sign Language · Real-Time AI</div>
+  <h1>Sign.<br>Speak.<br>Connect.</h1>
+  <p>Real-time ISL recognition powered by MediaPipe and TensorFlow — running entirely on your device.</p>
+
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="btnWord" onclick="setMode('WORD')">Word mode</button>
+    <button class="mode-btn" id="btnSent" onclick="setMode('SENTENCE')">Sentence mode</button>
+  </div>
+</div>
+
+<div class="howto-strip">
+  <div class="howto-card">
+    <div class="howto-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+    </div>
+    <div class="howto-num">STEP 1</div>
+    <div class="howto-title">Allow camera access</div>
+    <div class="howto-desc">Click "Start Prediction" and allow your browser to use the webcam. Nothing is uploaded — all processing happens live.</div>
+  </div>
+  <div class="howto-card">
+    <div class="howto-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11.5V6a2 2 0 1 1 4 0v5.5M13 11.5V4a2 2 0 1 1 4 0v9M17 12V8a2 2 0 1 1 4 0v6c0 4-3 7-7 7h-1c-3 0-4.5-1-6-3l-2.5-4c-.6-1 .1-2.3 1.3-2.2.6 0 1.1.3 1.5.8L9 13"/></svg>
+    </div>
+    <div class="howto-num">STEP 2</div>
+    <div class="howto-title">Choose a mode</div>
+    <div class="howto-desc">Word mode spells letter-by-letter. Sentence mode records a short gesture and predicts a whole phrase at once. Switch anytime with M.</div>
+  </div>
+  <div class="howto-card">
+    <div class="howto-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/></svg>
+    </div>
+    <div class="howto-num">STEP 3</div>
+    <div class="howto-title">Sign and hold steady</div>
+    <div class="howto-desc">Show the sign clearly in frame and hold it briefly — the progress bar at the top of the camera fills up as it confirms your sign.</div>
+  </div>
+  <div class="howto-card">
+    <div class="howto-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+    </div>
+    <div class="howto-num">STEP 4</div>
+    <div class="howto-title">Confirm and speak</div>
+    <div class="howto-desc">Press Space to confirm a word, Enter to speak the sentence out loud, or C to clear. Common phrases on the right speak automatically when matched.</div>
+  </div>
+</div>
+
+<div class="demo-section">
+  <div class="demo-card">
+    <div class="collapsible-header" onclick="toggleDemo()">
+      <div class="panel-label" style="margin-bottom:0">Watch a quick demo</div>
+      <svg class="toggle-icon" id="demoToggleIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div id="demoBody" style="display:none">
+      <div class="demo-video-wrap">
+        <video id="demoVideo" controls preload="none" poster="{% static 'predictor/demo/demo-poster.jpg' %}">
+          <source src="{% static 'predictor/demo/demo.mp4' %}" type="video/mp4">
+        </video>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="main-layout">
+
+  <!-- Camera -->
+  <div class="camera-card">
+    <div class="camera-wrap">
+      <video id="videoEl" autoplay playsinline muted></video>
+      <canvas id="overlayCanvas"></canvas>
+      <div class="shot-flash" id="shotFlash"></div>
+
+      <div class="camera-placeholder" id="placeholder">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+          <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+        </svg>
+        <p>Click "Start Prediction" to begin</p>
+      </div>
+
+      <div class="hold-bar"><div class="hold-bar-fill" id="holdBar"></div></div>
+
+      <div class="letter-badge" id="letterBadge" style="display:none">
+        <span class="letter-big" id="letterBig">-</span>
+        <span class="conf-text" id="confText">0%</span>
+      </div>
+
+      <div class="rec-badge" id="recBadge">
+        <div class="rec-dot"></div>
+        Recording…
+      </div>
+    </div>
+
+    <div class="camera-controls">
+      <button class="btn btn-primary" id="btnStart" onclick="startPrediction()">
+        ▶ Start Prediction
+      </button>
+      <button class="btn" id="btnStop" onclick="stopPrediction()" disabled>
+        ■ Stop
+      </button>
+
+      <!-- Word mode controls -->
+      <div id="wordControls" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="sendCmd('SPACE')" title="Confirm word">Space</button>
+        <button class="btn" onclick="sendCmd('BACKSPACE')" title="Delete letter">⌫</button>
+        <button class="btn" onclick="sendCmd('ENTER')" title="Speak sentence">Speak</button>
+        <button class="btn btn-danger" onclick="sendCmd('CLEAR')">Clear</button>
+      </div>
+
+      <!-- Sentence mode controls -->
+      <div id="sentControls" style="display:none">
+        <button class="btn btn-rec" id="btnRec" onclick="toggleRecording()">
+          ● Record phrase
+        </button>
+      </div>
+
+      <button class="btn" onclick="saveScreenshot()" title="Save screenshot (S)">📷 Screenshot</button>
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="right-panel">
+
+    <!-- Word mode panels -->
+    <div id="wordPanels">
+      <div class="panel-card">
+        <div class="panel-label">Current word</div>
+        <div class="word-display">
+          <span id="wordDisplay"></span><span class="cursor-blink">|</span>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-label">Sentence</div>
+        <div class="sentence-display" id="sentenceDisplay">
+          <span style="color:var(--muted);font-size:13px">Sign letters to begin…</span>
+        </div>
+        <div class="matched-phrase" id="matchedPhrase"></div>
+      </div>
+    </div>
+
+    <!-- Sentence mode panel -->
+    <div id="sentPanel" style="display:none">
+      <div class="panel-card">
+        <div class="panel-label">Detected phrase</div>
+        <div class="sent-result" id="sentResult">—</div>
+        <div class="sent-conf" id="sentConf"></div>
+        <div class="sent-progress">
+          <div class="sent-progress-fill" id="sentProgress"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shortcuts -->
+    <div class="panel-card">
+      <div class="panel-label">Controls</div>
+
+      <div class="shortcuts global-shortcuts">
+        <div class="shortcut-row"><kbd>M</kbd><span class="shortcut-desc">Toggle mode</span></div>
+        <div class="shortcut-row"><kbd>S</kbd><span class="shortcut-desc">Save screenshot</span></div>
+        <div class="shortcut-row"><kbd>Q</kbd><span class="shortcut-desc">Stop session</span></div>
+      </div>
+
+      <div class="shortcuts" id="shortcutsWord">
+        <div class="shortcut-row"><kbd>Space</kbd><span class="shortcut-desc">Confirm word</span></div>
+        <div class="shortcut-row"><kbd>⌫</kbd> <span class="shortcut-desc">Delete letter</span></div>
+        <div class="shortcut-row"><kbd>Enter</kbd><span class="shortcut-desc">Speak sentence</span></div>
+        <div class="shortcut-row"><kbd>C</kbd> <span class="shortcut-desc">Clear all</span></div>
+        <div class="shortcut-row"><kbd>H</kbd> <span class="shortcut-desc">Toggle phrase list</span></div>
+      </div>
+      <div class="shortcuts" id="shortcutsSent" style="display:none">
+        <div class="shortcut-row"><kbd>R</kbd><span class="shortcut-desc">Start / stop recording</span></div>
+      </div>
+    </div>
+
+    <!-- ISL alphabet reference -->
+    <div class="panel-card">
+      <div class="collapsible-header" onclick="toggleAlphabet()">
+        <div class="panel-label" style="margin-bottom:0">ISL alphabet reference</div>
+        <svg class="toggle-icon" id="alphaToggleIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div id="alphabetBody" style="display:none">
+        <div class="alphabet-grid" id="alphabetGrid"></div>
+      </div>
+    </div>
+
+    <!-- Common phrases -->
+    <div class="panel-card" id="phrasePanel">
+      <div class="panel-label">
+        Common ISL phrases
+        <span class="hint">H to hide</span>
+      </div>
+      <div class="phrase-grid" id="phraseGrid"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const PHRASES = {
+  "HELLO":"Hello!","HI":"Hi there!","BYE":"Goodbye!","THANKS":"Thank you!",
+  "SORRY":"I am sorry!","HELP":"I need help!","WATER":"I need water.",
+  "DOCTOR":"I need a doctor.","YES":"Yes.","NO":"No.","LOVE":"I love you.",
+  "HAPPY":"I am happy.","STOP":"Please stop.","WAIT":"Please wait.",
+  "HOWRU":"How are you?","NAME":"What is your name?","FOOD":"I want food.",
+  "MEDICINE":"I need medicine.","PAIN":"I am in pain.","TIRED":"I am tired.",
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let ws = null;
+let stream = null;
+let mode = "WORD";
+let active = false;
+let recording = false;
+let frameLoop = null;
+let phraseVisible = true;
+
+const videoEl = document.getElementById("videoEl");
+const overlayCanvas= document.getElementById("overlayCanvas");
+const ctx = overlayCanvas.getContext("2d");
+
+// ── Build phrase grid ─────────────────────────────────────────────────────────
+const phraseGrid = document.getElementById("phraseGrid");
+Object.entries(PHRASES).forEach(([k,v]) => {
+  const row = document.createElement("div");
+  row.className = "phrase-row";
+  row.innerHTML = `<span class="phrase-key">${k}</span><span class="phrase-val">${v}</span>`;
+  phraseGrid.appendChild(row);
+});
+
+// ── Build ISL alphabet reference grid ─────────────────────────────────────────
+// Looks for /static/predictor/alphabet/A.jpg ... Z.jpg. If a letter's image is
+// missing, it falls back to showing just the letter so nothing looks broken.
+const alphabetGrid = document.getElementById("alphabetGrid");
+const ALPHA_STATIC_BASE = "{% static 'predictor/alphabet/' %}";
+"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(letter => {
+  const cell = document.createElement("div");
+  cell.className = "alphabet-cell";
+  const img = document.createElement("img");
+  img.src = `${ALPHA_STATIC_BASE}${letter}.jpg`;
+  img.alt = letter;
+  img.onerror = () => {
+    cell.innerHTML = `<span class="fallback-letter">${letter}</span>`;
+  };
+  const label = document.createElement("span");
+  label.className = "cell-label";
+  label.textContent = letter;
+  cell.appendChild(img);
+  cell.appendChild(label);
+  alphabetGrid.appendChild(cell);
+});
+
+function toggleAlphabet() {
+  const body = document.getElementById("alphabetBody");
+  const icon = document.getElementById("alphaToggleIcon");
+  const open = body.style.display === "none";
+  body.style.display = open ? "block" : "none";
+  icon.classList.toggle("open", open);
+}
+
+function toggleDemo() {
+  const body = document.getElementById("demoBody");
+  const icon = document.getElementById("demoToggleIcon");
+  const open = body.style.display === "none";
+  body.style.display = open ? "block" : "none";
+  icon.classList.toggle("open", open);
+  if (open) {
+    const video = document.getElementById("demoVideo");
+    // If the demo file 404s, swap in a friendly placeholder instead of a broken player
+    video.onerror = () => {
+      document.getElementById("demoBody").innerHTML =
+        '<div class="demo-fallback">📹 No demo video uploaded yet.<br>Add one at isl_web/predictor/static/predictor/demo/demo.mp4</div>';
+    };
+  }
+}
+
+// ── Mode toggle ───────────────────────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  document.getElementById("btnWord").classList.toggle("active", m === "WORD");
+  document.getElementById("btnSent").classList.toggle("active", m === "SENTENCE");
+  document.getElementById("wordControls").style.display = m === "WORD" ? "flex" : "none";
+  document.getElementById("sentControls").style.display = m === "SENTENCE" ? "flex" : "none";
+  document.getElementById("wordPanels").style.display = m === "WORD" ? "block" : "none";
+  document.getElementById("sentPanel").style.display = m === "SENTENCE" ? "block" : "none";
+  document.getElementById("shortcutsWord").style.display= m === "WORD" ? "grid" : "none";
+  document.getElementById("shortcutsSent").style.display= m === "SENTENCE" ? "grid" : "none";
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify({cmd:"SET_MODE", mode:m}));
+  recording = false;
+  updateRecUI(false);
+}
+
+function toggleMode() {
+  setMode(mode === "WORD" ? "SENTENCE" : "WORD");
+}
+
+// ── WebSocket setup ───────────────────────────────────────────────────────────
+function connectWS() {
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  ws = new WebSocket(`${proto}://${location.host}/ws/predict/`);
+
+  ws.onopen = () => {
+    setStatus("connected");
+    ws.send(JSON.stringify({cmd:"SET_MODE", mode}));
+  };
+  ws.onclose = () => setStatus("disconnected");
+  ws.onerror = () => setStatus("error");
+  ws.onmessage = (e) => handleMessage(JSON.parse(e.data));
+}
+
+function setStatus(s) {
+  const pill = document.getElementById("statusPill");
+  const dot = document.getElementById("statusDot");
+  const txt = document.getElementById("statusText");
+  pill.className = "status-pill" + (s === "connected" ? " connected" : "");
+  dot.className = "status-dot" + (s === "connected" ? " pulse" : "");
+  txt.textContent = s;
+}
+
+// ── Start / stop ──────────────────────────────────────────────────────────────
+async function startPrediction() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({video:{width:640,height:480}});
+    videoEl.srcObject = stream;
+    document.getElementById("placeholder").style.display = "none";
+    document.getElementById("letterBadge").style.display = "flex";
+    document.getElementById("btnStart").disabled = true;
+    document.getElementById("btnStop").disabled = false;
+    active = true;
+    connectWS();
+    sendFrames();
+  } catch(err) {
+    alert("Camera access denied: " + err.message);
+  }
+}
+
+function stopPrediction() {
+  if (!active) return;
+  active = false;
+  if (frameLoop) clearTimeout(frameLoop);
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  if (ws) ws.close();
+  videoEl.srcObject = null;
+  document.getElementById("placeholder").style.display = "flex";
+  document.getElementById("letterBadge").style.display = "none";
+  document.getElementById("btnStart").disabled = false;
+  document.getElementById("btnStop").disabled = true;
+  document.getElementById("holdBar").style.width = "0%";
+}
+
+// ── Frame capture → WebSocket ─────────────────────────────────────────────────
+const capCanvas = document.createElement("canvas");
+const capCtx = capCanvas.getContext("2d");
+const FRAME_MS = 66; // ~15fps — enough for real-time, light on CPU
+
+function sendFrames() {
+  if (!active) return;
+  if (ws && ws.readyState === 1 && videoEl.readyState >= 2) {
+    const w = videoEl.videoWidth || 640;
+    const h = videoEl.videoHeight || 480;
+    capCanvas.width = w;
+    capCanvas.height = h;
+    capCtx.save();
+    capCtx.scale(-1, 1);
+    capCtx.drawImage(videoEl, -w, 0);
+    capCtx.restore();
+    capCanvas.toBlob(blob => {
+      if (blob && ws && ws.readyState === 1) ws.send(blob);
+    }, "image/jpeg", 0.8);
+  }
+  frameLoop = setTimeout(sendFrames, FRAME_MS);
+}
+
+// ── Screenshot ────────────────────────────────────────────────────────────────
+function saveScreenshot() {
+  if (!active || !videoEl.videoWidth) {
+    alert("Start prediction first to capture a frame.");
+    return;
+  }
+  const w = videoEl.videoWidth, h = videoEl.videoHeight;
+  const shotCanvas = document.createElement("canvas");
+  shotCanvas.width = w; shotCanvas.height = h;
+  const sctx = shotCanvas.getContext("2d");
+  // Mirror to match what's shown on screen
+  sctx.save();
+  sctx.scale(-1, 1);
+  sctx.drawImage(videoEl, -w, 0, w, h);
+  sctx.restore();
+
+  shotCanvas.toBlob(blob => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    a.href = url;
+    a.download = `isl_screenshot_${stamp}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, "image/png");
+
+  const flash = document.getElementById("shotFlash");
+  flash.classList.remove("flash");
+  void flash.offsetWidth; // restart animation
+  flash.classList.add("flash");
+}
+
+// ── Phrase cheat-sheet toggle ─────────────────────────────────────────────────
+function togglePhrasePanel() {
+  phraseVisible = !phraseVisible;
+  document.getElementById("phrasePanel").style.display = phraseVisible ? "block" : "none";
+}
+
+// ── Message handler ───────────────────────────────────────────────────────────
+function handleMessage(data) {
+  if (data.type === "prediction") {
+    const prog = (data.hold_progress || 0) * 100;
+    document.getElementById("holdBar").style.width = prog + "%";
+
+    if (mode === "WORD") {
+      const lbl = data.letter || "-";
+      const conf = Math.round((data.confidence || 0) * 100);
+      document.getElementById("letterBig").textContent = lbl;
+      document.getElementById("confText").textContent = conf + "%";
+      document.getElementById("letterBig").style.color =
+        data.hand_detected ? "var(--accent)" : "var(--muted)";
+
+      document.getElementById("wordDisplay").textContent = data.word || "";
+      renderSentence(data.sentence || "");
+
+      if (data.letter_committed) flashLetter();
+    }
+
+    if (mode === "SENTENCE") {
+      if (data.recording && data.seq_len) {
+        const pct = ((data.buffer_frames||0) / data.seq_len * 100).toFixed(0);
+        document.getElementById("sentProgress").style.width = pct + "%";
+      }
+      if (data.sentence_result) {
+        document.getElementById("sentResult").textContent = data.sentence_result;
+        document.getElementById("sentConf").textContent =
+          "Confidence: " + Math.round((data.sentence_conf||0)*100) + "%";
+        document.getElementById("sentProgress").style.width = "0%";
+        updateRecUI(false);
+        recording = false;
+        speak(data.sentence_result);
+      }
+    }
+  }
+
+  if (data.type === "word_update") {
+    document.getElementById("wordDisplay").textContent = data.word || "";
+    renderSentence(data.sentence || "");
+    if (data.matched) {
+      showMatchedPhrase(data.matched);
+      speak(data.matched);
+    } else if (data.speak) {
+      speak(data.speak);
+    }
+  }
+
+  if (data.type === "recording_status") {
+    recording = data.action === "recording_started";
+    updateRecUI(recording);
+  }
+}
+
+function renderSentence(s) {
+  const el = document.getElementById("sentenceDisplay");
+  if (!s) {
+    el.innerHTML = '<span style="color:var(--muted);font-size:13px">Sign letters to begin…</span>';
+    return;
+  }
+  const words = s.split(" ");
+  el.innerHTML = words.map((w, i) =>
+    `<span class="word-token${i===words.length-1?" latest":""}">${w}</span>`
+  ).join("");
+}
+
+function showMatchedPhrase(phrase) {
+  const el = document.getElementById("matchedPhrase");
+  el.textContent = "★ " + phrase;
+  el.classList.add("visible");
+  setTimeout(() => el.classList.remove("visible"), 4000);
+}
+
+function flashLetter() {
+  const el = document.getElementById("letterBig");
+  el.style.transform = "scale(1.3)";
+  el.style.transition = "transform .15s";
+  setTimeout(() => { el.style.transform = "scale(1)"; }, 150);
+}
+
+function updateRecUI(isRec) {
+  document.getElementById("recBadge").classList.toggle("visible", isRec);
+  const btn = document.getElementById("btnRec");
+  btn.classList.toggle("recording", isRec);
+  btn.textContent = isRec ? "■ Stop recording" : "● Record phrase";
+  if (!isRec) document.getElementById("sentProgress").style.width = "0%";
+}
+
+// ── Commands ──────────────────────────────────────────────────────────────────
+function sendCmd(cmd) {
+  if (!ws || ws.readyState !== 1) return;
+
+  if (cmd === "CLEAR") {
+    document.getElementById("wordDisplay").textContent = "";
+    document.getElementById("letterBig").textContent = "-";
+    document.getElementById("confText").textContent = "0%";
+    document.getElementById("holdBar").style.width = "0%";
+    document.getElementById("matchedPhrase").classList.remove("visible");
+    renderSentence("");
+    ws.send(JSON.stringify({cmd}));
+    return;
+  }
+
+  if (cmd === "ENTER") {
+    const sentText = document.getElementById("sentenceDisplay").innerText.trim();
+    if (sentText && sentText !== "Sign letters to begin…") {
+      speak(sentText);
+    }
+    ws.send(JSON.stringify({cmd}));
+    return;
+  }
+
+  ws.send(JSON.stringify({cmd}));
+}
+
+function toggleRecording() {
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify({cmd:"TOGGLE_RECORDING"}));
+}
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
+document.addEventListener("keydown", e => {
+  // Don't hijack typing if focus is in an input/textarea (none currently, but safe)
+  const tag = (e.target && e.target.tagName) || "";
+  if (tag === "INPUT" || tag === "TEXTAREA") return;
+
+  // ── Global shortcuts ──
+  if (e.key === "m" || e.key === "M") { toggleMode(); return; }
+  if (e.key === "s" || e.key === "S") { saveScreenshot(); return; }
+  if (e.key === "q" || e.key === "Q") { stopPrediction(); return; }
+
+  if (!active) return;
+
+  // ── Word mode shortcuts ──
+  if (mode === "WORD") {
+    if (e.code === "Space") { e.preventDefault(); sendCmd("SPACE"); }
+    if (e.code === "Backspace") sendCmd("BACKSPACE");
+    if (e.code === "Enter") sendCmd("ENTER");
+    if (e.key === "c" || e.key === "C") sendCmd("CLEAR");
+    if (e.key === "h" || e.key === "H") togglePhrasePanel();
+  }
+
+  // ── Sentence mode shortcuts ──
+  if (mode === "SENTENCE") {
+    if (e.key === "r" || e.key === "R") toggleRecording();
+  }
+});
+
+// ── TTS ───────────────────────────────────────────────────────────────────────
+let ttsReady = false;
+document.addEventListener("click", () => {
+  if (!ttsReady && window.speechSynthesis) {
+    const dummy = new SpeechSynthesisUtterance("");
+    window.speechSynthesis.speak(dummy);
+    ttsReady = true;
+  }
+}, { once: false });
+
+function speak(text) {
+  if (!text || !window.speechSynthesis) return;
+  if (text === "Sign letters to begin…" || text === "—") return;
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = "en-IN";
+  utt.rate = 0.92;
+  utt.pitch = 1.0;
+  utt.volume = 1.0;
+  const voices = window.speechSynthesis.getVoices();
+  const indian = voices.find(v => v.lang === "en-IN");
+  if (indian) utt.voice = indian;
+  window.speechSynthesis.speak(utt);
+}
+</script>
+
+</body>
+</html>

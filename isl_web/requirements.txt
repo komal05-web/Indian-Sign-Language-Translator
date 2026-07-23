@@ -1,0 +1,16 @@
+# ── Web framework ─────────────────────────────────────────────────────────────
+django==4.2.13
+channels==4.0.0
+daphne==4.0.0
+whitenoise==6.6.0
+python-dotenv==1.0.1
+
+# ── ML / CV stack — pinned for Python 3.11 compatibility ─────────────────────
+tensorflow-cpu==2.16.2
+mediapipe==0.10.13
+opencv-python-headless==4.10.0.84
+numpy==1.26.4
+scikit-learn==1.4.2
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+pyttsx3==2.90
